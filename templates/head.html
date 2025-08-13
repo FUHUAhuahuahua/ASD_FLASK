@@ -1,0 +1,1886 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星识西藏儿童自闭症检测系统</title>
+    <script src="https://cdn.tailwindcss.com/3.3.3"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://webapi.amap.com/loader.js"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .nav-link {
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+
+        .nav-link.active {
+            background-color: rgba(59, 130, 246, 0.2);
+            border-left: 3px solid #3b82f6;
+        }
+
+        .map-container {
+            height: 500px;
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .chart-container {
+            height: 300px;
+            width: 100%;
+            position: relative;
+        }
+
+        .data-card {
+            transition: all 0.3s ease;
+        }
+
+        .data-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge.online {
+            background-color: rgba(34, 197, 94, 0.1);
+            color: #16a34a;
+        }
+
+        .badge.offline {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+
+        .badge.positive {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+
+        .badge.negative {
+            background-color: rgba(34, 197, 94, 0.1);
+            color: #16a34a;
+        }
+
+        .badge.suspected {
+            background-color: rgba(234, 179, 8, 0.1);
+            color: #ca8a04;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .animate-pulse-slow {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .sidebar {
+            transition: all 0.3s ease;
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                z-index: 50;
+                height: 100vh;
+                top: 0;
+                left: 0;
+                width: 280px;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .sidebar-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 40;
+            }
+        }
+
+        /* 星识助手样式 */
+        .chat-container {
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: #f9fafc;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 20px;
+            max-width: 80%;
+        }
+
+        .system-message {
+            align-self: flex-start;
+        }
+
+        .user-message {
+            margin-left: auto;
+            flex-direction: row-reverse;
+            align-self: flex-end;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        .user-message .avatar {
+            margin-right: 0;
+            margin-left: 10px;
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .system-avatar {
+            background-color: #e8f3ff;
+            color: #3b82f6;
+        }
+
+        .message-content {
+            padding: 12px 15px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: relative;
+            line-height: 1.5;
+        }
+
+        .system-message .message-content {
+            background-color: white;
+            color: #1e293b;
+            border-top-left-radius: 4px;
+        }
+
+        .user-message .message-content {
+            background-color: #3b82f6;
+            color: white;
+            border-top-right-radius: 4px;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        .user-message .message-time {
+            color: #cce0ff;
+        }
+
+        .chat-input-area {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid #e5e9f2;
+            background-color: white;
+            border-radius: 0 0 12px 12px;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: 1px solid #e5e9f2;
+            border-radius: 20px;
+            padding: 12px 15px;
+            resize: none;
+            outline: none;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            min-height: 44px;
+            max-height: 120px;
+        }
+
+        .chat-input:focus {
+            border-color: #3b82f6;
+        }
+
+        .send-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            margin-left: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .send-btn:hover {
+            background-color: #2563eb;
+        }
+
+        .quick-questions {
+            margin-top: 20px;
+        }
+
+        .quick-question-btn {
+            padding: 8px 16px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border: none;
+            border-radius: 20px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .quick-question-btn:hover {
+            background-color: rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+        }
+
+        /* 模型更新界面样式 */
+        .model-update-container {
+            padding: 1.5rem;
+        }
+
+        .update-btn {
+            background-color: #3b82f6;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            transition: background-color 0.3s;
+        }
+
+        .update-btn:hover {
+            background-color: #2563eb;
+        }
+
+        .upload-area {
+            border: 2px dashed #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+
+        .upload-icon {
+            margin-bottom: 1rem;
+        }
+
+        .progress-container {
+            height: 0.5rem;
+            background-color: #e5e7eb;
+            border-radius: 0.25rem;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: #3b82f6;
+            transition: width 0.3s ease;
+        }
+
+        .success-message {
+            display: none;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            color: #3b82f6;
+            background: none;
+            border: none;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+
+        .back-btn i {
+            margin-right: 0.5rem;
+        }
+
+        .version-selector {
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        .update-status {
+            text-align: center;
+            margin: 1rem 0;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        /* 登录模态框样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal {
+            background-color: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #475569;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+
+        .error-message {
+            color: #dc2626;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+
+        /* 未登录状态隐藏所有内容 */
+        .content-hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- 登录模态框 -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">用户登录</h3>
+                <button class="close-modal" id="closeLoginModal">&times;</button>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username" class="form-label">用户名</label>
+                    <input type="text" id="username" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="password" class="form-label">密码</label>
+                    <input type="password" id="password" class="form-input" required>
+                    <div class="error-message" id="loginError"></div>
+                </div>
+                <button type="submit" class="btn-primary">登录</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 主内容区（默认隐藏，登录后显示） -->
+    <div class="flex content-hidden" id="mainContent">
+        <!-- 侧边栏导航 -->
+        <div class="sidebar bg-white shadow-lg lg:shadow-none lg:relative">
+            <div class="p-4 border-b border-gray-200 flex items-center justify-between lg:justify-center">
+                <div class="flex items-center">
+                    <i class="fas fa-heartbeat text-blue-600 text-2xl mr-2"></i>
+                    <span class="text-xl font-bold text-blue-600 hidden lg:inline">星识自闭症检测系统</span>
+                </div>
+                <button class="lg:hidden text-gray-500" id="sidebarCloseBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <nav class="p-4">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="#map" class="nav-link active flex items-center p-3 rounded-lg">
+                            <i class="fas fa-map-marked-alt text-blue-600 mr-3"></i>
+                            <span>地图可视化</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#devices" class="nav-link flex items-center p-3 rounded-lg">
+                            <i class="fas fa-tablet-alt text-blue-600 mr-3"></i>
+                            <span>设备管理</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#cases" class="nav-link flex items-center p-3 rounded-lg">
+                            <i class="fas fa-child text-blue-600 mr-3"></i>
+                            <span>个案管理</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#stats" class="nav-link flex items-center p-3 rounded-lg">
+                            <i class="fas fa-chart-bar text-blue-600 mr-3"></i>
+                            <span>数据统计</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#assistant" class="nav-link flex items-center p-3 rounded-lg">
+                            <i class="fas fa-robot text-blue-600 mr-3"></i>
+                            <span>星识助手</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="nav-link flex items-center p-3 rounded-lg" id="logoutLink">
+                            <i class="fas fa-sign-out-alt text-blue-600 mr-3"></i>
+                            <span>退出登录</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="flex-1 overflow-x-hidden">
+            <!-- 顶部导航 -->
+            <header class="bg-white shadow-sm">
+                <div class="px-4 py-3 flex items-center justify-between">
+                    <button class="lg:hidden text-gray-500" id="sidebarToggleBtn">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="flex items-center space-x-4">
+                        <div class="text-lg font-semibold text-blue-600">西藏自治区6-12月龄儿童自闭症检测系统</div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button class="text-gray-500 hover:text-blue-600">
+                            <i class="fas fa-bell"></i>
+                        </button>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                <i class="fas fa-user-md"></i>
+                            </div>
+                            <span class="ml-2 hidden md:inline" id="currentUser">医生</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="p-4">
+                <!-- 地图可视化模块 -->
+                <section id="map" class="mb-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-map-marked-alt text-blue-600 mr-2"></i>
+                            地图可视化
+                        </h2>
+                        <div class="flex space-x-2">
+                            <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option>拉萨市</option>
+                                <option>日喀则市</option>
+                                <option>昌都市</option>
+                                <option>林芝市</option>
+                                <option>山南市</option>
+                                <option>那曲市</option>
+                                <option>阿里地区</option>
+                            </select>
+                            <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option>近7天</option>
+                                <option>近30天</option>
+                                <option>近90天</option>
+                                <option>全年</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div class="glass-card p-4 data-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-500">总检测数</p>
+                                    <p class="text-2xl font-bold" id="totalTests">--</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                    <i class="fas fa-vial"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="glass-card p-4 data-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-500">阳性数</p>
+                                    <p class="text-2xl font-bold" id="positiveCount">--</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="glass-card p-4 data-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-500">疑似数</p>
+                                    <p class="text-2xl font-bold" id="suspectedCount">--</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600">
+                                    <i class="fas fa-question-circle"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="glass-card p-4 data-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-500">阳性率</p>
+                                    <p class="text-2xl font-bold" id="positiveRate">--</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                                    <i class="fas fa-percentage"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card">
+                        <div id="mapContainer" class="map-container">
+                            <!-- 地图将通过JS初始化 -->
+                            <div class="w-full h-full flex items-center justify-center">
+                                <i class="fas fa-spinner fa-spin text-blue-600 text-3xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 设备管理模块 -->
+                <section id="devices" class="mb-8 hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-tablet-alt text-blue-600 mr-2"></i>
+                            设备管理
+                        </h2>
+                        <div class="flex space-x-2">
+                            <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option selected>全部地区</option>
+                                <option>拉萨市</option>
+                                <option>日喀则市</option>
+                                <option>昌都市</option>
+                                <option>林芝市</option>
+                                <option>山南市</option>
+                                <option>那曲市</option>
+                                <option>阿里地区</option>
+                            </select>
+                            <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option selected>全部状态</option>
+                                <option>在线</option>
+                                <option>离线</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="glass-card overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">所属地区</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">安装位置</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">当前模型版本</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">累计采集数</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">今日采集数</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最后上传时间</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="devicesTableBody">
+                                <!-- 设备数据将通过API加载 -->
+                                <tr>
+                                    <td colspan="9" class="px-6 py-4 text-center text-gray-500">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i>加载设备数据中...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 模型更新界面 -->
+                <section id="modelUpdate" class="mb-8 hidden">
+                    <div class="model-update-container">
+                        <!-- 返回按钮 -->
+                        <button class="back-btn" id="backToDevices">
+                            <i class="fas fa-arrow-left"></i> 返回设备列表
+                        </button>
+
+                        <h2 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+                            <i class="fas fa-microchip text-blue-600 mr-2"></i>
+                            模型更新
+                        </h2>
+
+                        <div class="glass-card p-6">
+                            <!-- 设备信息展示 -->
+                            <div class="mb-6">
+                                <h3 class="text-lg font-medium text-gray-800 mb-2">设备信息</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-sm text-gray-500">设备ID</p>
+                                        <p class="font-medium" id="deviceId">--</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-500">所属地区</p>
+                                        <p class="font-medium" id="deviceRegion">--</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-500">当前模型版本</p>
+                                        <p class="font-medium" id="currentVersion">--</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-500">最新可用版本</p>
+                                        <p class="font-medium text-green-600" id="latestVersion">--</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 版本选择 -->
+                            <div class="mb-6">
+                                <h3 class="text-lg font-medium text-gray-800 mb-2">选择版本</h3>
+                                <select class="version-selector" id="versionSelector">
+                                    <!-- 版本选项将通过JS加载 -->
+                                    <option value="">加载版本中...</option>
+                                </select>
+                            </div>
+
+                            <!-- 更新进度区域 -->
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-800 mb-4">更新进度</h3>
+
+                                <!-- 状态文本 -->
+                                <div class="update-status" id="updateStatus">
+                                    请点击"开始更新"按钮启动模型更新
+                                </div>
+
+                                <!-- 进度条 -->
+                                <div class="progress-container" id="progressContainer" style="display: none;">
+                                    <div class="progress-bar" id="progressBar" style="width: 0%;"></div>
+                                </div>
+
+                                <!-- 操作按钮 -->
+                                <div class="text-center mt-4">
+                                    <button class="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm hover:bg-blue-700"
+                                            id="startUploadBtn">
+                                        开始更新
+                                    </button>
+                                </div>
+
+                                <!-- 成功提示 -->
+                                <div class="success-message border-l-4 border-green-500 bg-green-50 px-4 py-3 mt-4" id="successMessage">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-check-circle text-green-600 text-xl mr-3"></i>
+                                        <div>
+                                            <p class="text-sm font-medium text-green-800">模型更新成功</p>
+                                            <p class="text-xs text-green-700 mt-1">设备模型已更新至 <span id="updatedVersion">v2.4.0</span>，下次连接自动生效</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 个案管理模块 -->
+                <section id="cases" class="mb-8 hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-child text-blue-600 mr-2"></i>
+                            个案管理
+                        </h2>
+                        <div class="flex space-x-2">
+                            <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option selected>全部地区</option>
+                                <option>拉萨市</option>
+                                <option>日喀则市</option>
+                                <option>昌都市</option>
+                                <option>林芝市</option>
+                                <option>山南市</option>
+                                <option>那曲市</option>
+                                <option>阿里地区</option>
+                            </select>
+                            <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option selected>全部结论</option>
+                                <option>阳性</option>
+                                <option>疑似</option>
+                                <option>阴性</option>
+                            </select>
+                            <input type="date" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="glass-card overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">个案ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">性别</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">年龄(月)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">所属地区</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">检测日期</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">评估结论</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="casesTableBody">
+                                <!-- 个案数据将通过API加载 -->
+                                <tr>
+                                    <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i>加载个案数据中...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 数据统计模块 -->
+                <section id="stats" class="mb-8 hidden">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-chart-bar text-blue-600 mr-2"></i>
+                        数据统计
+                    </h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div class="glass-card p-4 data-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-500">全区总检测数</p>
+                                    <p class="text-2xl font-bold" id="statsTotalTests">--</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                    <i class="fas fa-vial"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="glass-card p-4 data-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-500">阳性个案数</p>
+                                    <p class="text-2xl font-bold" id="statsPositiveCount">--</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="glass-card p-4 data-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-500">疑似个案数</p>
+                                    <p class="text-2xl font-bold" id="statsSuspectedCount">--</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600">
+                                    <i class="fas fa-question-circle"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="glass-card p-4 data-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-500">平均检测年龄(月)</p>
+                                    <p class="text-2xl font-bold" id="statsAvgAge">--</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                                    <i class="fas fa-birthday-cake"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div class="glass-card p-4">
+                            <h3 class="text-lg font-medium text-gray-800 mb-4">检测数量趋势</h3>
+                            <div class="chart-container">
+                                <canvas id="testTrendChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="glass-card p-4">
+                            <h3 class="text-lg font-medium text-gray-800 mb-4">性别分布</h3>
+                            <div class="chart-container">
+                                <canvas id="genderDistributionChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-4">
+                        <h3 class="text-lg font-medium text-gray-800 mb-4">阳性率地区对比</h3>
+                        <div class="chart-container">
+                            <canvas id="positiveRateChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 星识助手模块 -->
+                <section id="assistant" class="mb-8 hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-robot text-blue-600 mr-2"></i>
+                            星识助手
+                        </h2>
+                        <div>
+                            <span class="text-sm text-gray-500">
+                                <i class="fas fa-info-circle mr-1"></i>智能数据分析助手
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="glass-card chat-container">
+                        <!-- 对话历史区域 -->
+                        <div class="chat-history" id="chatHistory">
+                            <!-- 系统欢迎消息 -->
+                            <div class="message system-message">
+                                <div class="avatar system-avatar">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <div class="message-content">
+                                    <p>您好！我是星识助手，专注于自闭症检测数据的统计分析。我可以帮您解读数据趋势、比较地区差异并提供专业建议。请问有什么可以帮助您的？</p>
+                                    <div class="message-time">刚刚</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 输入区域 -->
+                        <div class="chat-input-area">
+                            <textarea
+                                id="userInput"
+                                class="chat-input"
+                                placeholder="请输入您的问题，例如：如何分析不同年龄段的检测数据？..."
+                            ></textarea>
+                            <button class="send-btn" id="sendBtn">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 快捷问题 -->
+                    <div class="quick-questions">
+                        <p class="text-sm text-gray-500 mb-3">快速提问：</p>
+                        <div>
+                            <button class="quick-question-btn" data-question="各地区的阳性率对比情况如何？">
+                                各地区的阳性率对比情况如何？
+                            </button>
+                            <button class="quick-question-btn" data-question="近6个月的检测数量变化趋势是怎样的？">
+                                近6个月的检测数量变化趋势是怎样的？
+                            </button>
+                            <button class="quick-question-btn" data-question="哪些设备的采集数据最多？">
+                                哪些设备的采集数据最多？
+                            </button>
+                            <button class="quick-question-btn" data-question="阳性案例的年龄分布有什么特点？">
+                                阳性案例的年龄分布有什么特点？
+                            </button>
+                            <button class="quick-question-btn" data-question="如何提高检测数据的准确性？">
+                                如何提高检测数据的准确性？
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+        </div>
+    </div>
+
+    <!-- 移动端侧边栏遮罩 -->
+    <div class="sidebar-overlay hidden" id="sidebarOverlay"></div>
+
+    <script>
+        // API基础URL
+        const API_BASE_URL = ''; // 如果前端后端同源，可留空；否则填写后端API地址
+
+        // 存储当前登录状态
+        let isLoggedIn = false;
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查登录状态
+            checkLoginStatus();
+
+            // 侧边栏切换
+            const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+            const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+            const sidebar = document.querySelector('.sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+            // 确保导航按钮存在
+            if (sidebarToggleBtn && sidebarCloseBtn && sidebar && sidebarOverlay) {
+                sidebarToggleBtn.addEventListener('click', function() {
+                    sidebar.classList.add('open');
+                    sidebarOverlay.classList.remove('hidden');
+                });
+
+                sidebarCloseBtn.addEventListener('click', function() {
+                    sidebar.classList.remove('open');
+                    sidebarOverlay.classList.add('hidden');
+                });
+
+                sidebarOverlay.addEventListener('click', function() {
+                    sidebar.classList.remove('open');
+                    sidebarOverlay.classList.add('hidden');
+                });
+            }
+
+            // 导航链接切换
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('section');
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    // 阻止未登录用户访问
+                    if (!isLoggedIn && this.getAttribute('href') !== '#') {
+                        e.preventDefault();
+                        showLoginModal();
+                        return;
+                    }
+
+                    // 处理登出链接
+                    if (this.id === 'logoutLink') {
+                        e.preventDefault();
+                        logout();
+                        return;
+                    }
+
+                    e.preventDefault();
+
+                    // 更新活动状态
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+
+                    // 隐藏所有部分
+                    sections.forEach(section => section.classList.add('hidden'));
+
+                    // 显示目标部分
+                    const targetId = this.getAttribute('href').substring(1);
+                    const targetSection = document.getElementById(targetId);
+                    if (targetSection) {
+                        targetSection.classList.remove('hidden');
+
+                        // 按需加载数据
+                        if (targetId === 'map') {
+                            loadMapData();
+                            loadSummaryStats();
+                        } else if (targetId === 'cases') {
+                            loadCasesData();
+                        } else if (targetId === 'stats') {
+                            loadStatsData();
+                        } else if (targetId === 'devices') {
+                            loadDevicesData();
+                        }
+                    }
+
+                    // 在移动端关闭侧边栏
+                    if (sidebar) {
+                        sidebar.classList.remove('open');
+                    }
+                    if (sidebarOverlay) {
+                        sidebarOverlay.classList.add('hidden');
+                    }
+                });
+            });
+
+            // 登录表单处理
+            const loginForm = document.getElementById('loginForm');
+            const loginError = document.getElementById('loginError');
+            const closeLoginModal = document.getElementById('closeLoginModal');
+            const loginModal = document.getElementById('loginModal');
+
+            if (loginForm) {
+                loginForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+
+                    const username = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+
+                    login(username, password)
+                        .then(user => {
+                            if (user) {
+                                // 登录成功
+                                if (loginModal) loginModal.classList.add('hidden');
+                                if (loginError) loginError.style.display = 'none';
+
+                                // 更新UI显示
+                                updateLoginUI(user);
+
+                                // 加载默认数据
+                                loadMapData();
+                                loadSummaryStats();
+                            } else {
+                                // 登录失败
+                                if (loginError) {
+                                    loginError.textContent = '用户名或密码错误';
+                                    loginError.style.display = 'block';
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error('登录失败:', error);
+                            if (loginError) {
+                                loginError.textContent = '登录失败，请稍后重试';
+                                loginError.style.display = 'block';
+                            }
+                        });
+                });
+            }
+
+            if (closeLoginModal) {
+                closeLoginModal.addEventListener('click', function() {
+                    if (loginModal) loginModal.classList.add('hidden');
+                    if (loginError) loginError.style.display = 'none';
+                });
+            }
+
+            // 登出链接处理
+            const logoutLink = document.getElementById('logoutLink');
+            if (logoutLink) {
+                logoutLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    logout();
+                });
+            }
+
+            // 初始化地图 - 使用setTimeout避免阻塞主线程
+            setTimeout(() => {
+                if (isLoggedIn && typeof AMapLoader !== 'undefined') {
+                    initMap();
+                }
+            }, 1000);
+
+            // 初始化图表 - 使用requestIdleCallback在浏览器空闲时初始化
+            if (typeof requestIdleCallback !== 'undefined') {
+                requestIdleCallback(() => {
+                    if (isLoggedIn) {
+                        initCharts();
+                    }
+                });
+            } else {
+                // 兼容不支持requestIdleCallback的浏览器
+                setTimeout(() => {
+                    if (isLoggedIn) {
+                        initCharts();
+                    }
+                }, 2000);
+            }
+
+            // 星识助手聊天功能
+            const sendBtn = document.getElementById('sendBtn');
+            const userInput = document.getElementById('userInput');
+            const chatHistory = document.getElementById('chatHistory');
+            const quickQuestionBtns = document.querySelectorAll('.quick-question-btn');
+
+            if (sendBtn && userInput && chatHistory) {
+                // 发送消息
+                const sendMessage = () => {
+                    const message = userInput.value.trim();
+                    if (message) {
+                        // 添加用户消息到聊天历史
+                        addMessageToHistory(message, 'user');
+
+                        // 清空输入框
+                        userInput.value = '';
+
+                        // 模拟系统回复（实际应调用API）
+                        setTimeout(() => {
+                            const responses = [
+                                "您的问题已收到，正在分析相关数据...",
+                                "根据系统统计，该指标在近期呈现上升趋势。",
+                                "不同地区的数据存在显著差异，主要受检测覆盖率影响。",
+                                "建议结合年龄分布进一步分析该数据。"
+                            ];
+                            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                            addMessageToHistory(randomResponse, 'system');
+                        }, 1000);
+                    }
+                };
+
+                sendBtn.addEventListener('click', sendMessage);
+                userInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                    }
+                });
+            }
+
+            // 快捷问题按钮
+            if (quickQuestionBtns) {
+                quickQuestionBtns.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const question = this.getAttribute('data-question');
+                        if (userInput) {
+                            userInput.value = question;
+                        }
+                    });
+                });
+            }
+
+            // 模型更新页面返回按钮
+            const backToDevicesBtn = document.getElementById('backToDevices');
+            if (backToDevicesBtn) {
+                backToDevicesBtn.addEventListener('click', function() {
+                    document.getElementById('modelUpdate').classList.add('hidden');
+                    document.getElementById('devices').classList.remove('hidden');
+                });
+            }
+
+            // 模型更新按钮
+            const startUploadBtn = document.getElementById('startUploadBtn');
+            if (startUploadBtn) {
+                startUploadBtn.addEventListener('click', function() {
+                    simulateModelUpdate();
+                });
+            }
+        });
+
+        // 添加消息到聊天历史
+        function addMessageToHistory(text, sender) {
+            const chatHistory = document.getElementById('chatHistory');
+            if (!chatHistory) return;
+
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = `avatar ${sender === 'system' ? 'system-avatar' : ''}`;
+            avatarDiv.innerHTML = sender === 'system' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.innerHTML = `
+                <p>${text}</p>
+                <div class="message-time">${timeString}</div>
+            `;
+
+            messageDiv.appendChild(avatarDiv);
+            messageDiv.appendChild(contentDiv);
+            chatHistory.appendChild(messageDiv);
+
+            // 滚动到底部
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        // 模拟模型更新过程
+        function simulateModelUpdate() {
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const updateStatus = document.getElementById('updateStatus');
+            const startUploadBtn = document.getElementById('startUploadBtn');
+            const successMessage = document.getElementById('successMessage');
+            const updatedVersion = document.getElementById('updatedVersion');
+            const versionSelector = document.getElementById('versionSelector');
+
+            if (!progressContainer || !progressBar || !updateStatus || !startUploadBtn) return;
+
+            // 禁用按钮
+            startUploadBtn.disabled = true;
+
+            // 显示进度条
+            progressContainer.style.display = 'block';
+            updateStatus.textContent = '正在准备更新包...';
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+
+                    // 更新完成
+                    updateStatus.textContent = '更新完成';
+
+                    // 显示成功消息
+                    if (successMessage && updatedVersion && versionSelector) {
+                        updatedVersion.textContent = versionSelector.value;
+                        successMessage.style.display = 'block';
+                    }
+                } else if (progress > 30) {
+                    updateStatus.textContent = '正在传输更新包...';
+                } else if (progress > 10) {
+                    updateStatus.textContent = '正在验证更新包...';
+                }
+
+                progressBar.style.width = `${progress}%`;
+            }, 500);
+        }
+
+        // 初始化地图
+        function initMap() {
+            AMapLoader.load({
+                key: "7e7e2985246ddc770cc38d30c68e2e7a", // 这里填写你的高德地图API密钥
+                version: "2.0",
+                plugins: ['AMap.Scale', 'AMap.ToolBar', 'AMap.Geolocation']
+            }).then(AMap => {
+                const map = new AMap.Map("mapContainer", {
+                    zoom: 7,
+                    center: [91.1322, 29.6603], // 西藏自治区中心坐标
+                    resizeEnable: true
+                });
+
+                // 添加地图控件
+                map.addControl(new AMap.Scale());
+                map.addControl(new AMap.ToolBar({
+                    position: 'RB'
+                }));
+
+                // 加载地图数据
+                loadMapData(map);
+            }).catch(e => {
+                console.error('地图初始化失败:', e);
+            });
+        }
+
+        // 初始化图表
+        function initCharts() {
+            // 检测数量趋势图
+            const testTrendCtx = document.getElementById('testTrendChart');
+            if (testTrendCtx) {
+                new Chart(testTrendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['1月', '2月', '3月', '4月', '5月', '6月'],
+                        datasets: [{
+                            label: '检测数量',
+                            data: [], // 将通过API加载
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 性别分布图
+            const genderCtx = document.getElementById('genderDistributionChart');
+            if (genderCtx) {
+                new Chart(genderCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['男', '女'],
+                        datasets: [{
+                            data: [], // 将通过API加载
+                            backgroundColor: ['#3b82f6', '#ec4899'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            }
+                        },
+                        cutout: '70%'
+                    }
+                });
+            }
+
+            // 阳性率地区对比图
+            const positiveRateCtx = document.getElementById('positiveRateChart');
+            if (positiveRateCtx) {
+                new Chart(positiveRateCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: [], // 将通过API加载
+                        datasets: [{
+                            label: '阳性率 (%)',
+                            data: [], // 将通过API加载
+                            backgroundColor: '#ef4444'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // 加载地图数据
+       // 加载地图数据
+function loadMapData(map) {
+    fetch(API_BASE_URL + '/api/map/data')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('获取地图数据失败');
+            }
+            return response.json();
+        })
+        .then(data => {  // data 是后端返回的列表，直接遍历
+            console.log('地图数据:', data);
+
+            if (window.AMap && map) {
+                map.remove(map.getAllOverlays('marker')); // 清除现有标记
+
+                // 修复1：直接遍历 data（而非 data.regions）
+                data.forEach(region => {
+                    const marker = new window.AMap.Marker({
+                        // 修复2：使用正确的经纬度字段 lnglat（后端返回的是数组）
+                        position: region.lnglat,
+                        title: region.name,
+                        label: {
+                            // 修复3：使用正确的阳性率字段 positiveRate
+                            content: `${region.positiveRate}%`,
+                            offset: new window.AMap.Pixel(20, 20)
+                        },
+                        icon: new window.AMap.Icon({
+                            size: new window.AMap.Size(32, 32),
+                            image: 'https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png'
+                        })
+                    });
+                    map.add(marker);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('加载地图数据失败:', error);
+            const mapContainer = document.getElementById('mapContainer');
+            if (mapContainer) {
+                mapContainer.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-red-50"><p class="text-red-600">地图数据加载失败</p></div>';
+            }
+        });
+}
+
+        // 加载个案数据
+        function loadCasesData() {
+            const casesTableBody = document.getElementById('casesTableBody');
+            if (casesTableBody) {
+                casesTableBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>加载个案数据中...</td></tr>';
+            }
+
+            fetch(API_BASE_URL + '/api/cases')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('获取个案数据失败');
+                    }
+                    return response.json();
+                })
+                .then(cases => {
+                    if (casesTableBody) {
+                        if (cases.length === 0) {
+                            casesTableBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-gray-500">暂无个案数据</td></tr>';
+                            return;
+                        }
+
+                        let html = '';
+                        cases.forEach(caseItem => {
+                            // 确定结论标签样式
+                            let conclusionClass = '';
+                            if (caseItem.conclusion === '阳性') {
+                                conclusionClass = 'positive';
+                            } else if (caseItem.conclusion === '阴性') {
+                                conclusionClass = 'negative';
+                            } else {
+                                conclusionClass = 'suspected';
+                            }
+
+                            html += `
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">${caseItem.caseId}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${caseItem.gender}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${caseItem.age}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${caseItem.region}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${caseItem.testDate}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="badge ${conclusionClass}">${caseItem.conclusion}</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <button class="text-blue-600 hover:text-blue-800 view-case-btn" data-case-id="${caseItem.caseId}">查看</button>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+
+                        casesTableBody.innerHTML = html;
+
+                        // 添加查看个案详情事件
+                        document.querySelectorAll('.view-case-btn').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const caseId = this.getAttribute('data-case-id');
+                                viewCaseDetail(caseId);
+                            });
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('加载个案数据失败:', error);
+                    if (casesTableBody) {
+                        casesTableBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-red-500">数据加载失败</td></tr>';
+                    }
+                });
+        }
+
+        // 查看个案详情
+        function viewCaseDetail(caseId) {
+            // 这里可以实现查看个案详情的逻辑
+            // 例如：打开模态框并加载详细信息
+            fetch(API_BASE_URL + `/api/cases/${caseId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('获取个案详情失败');
+                    }
+                    return response.json();
+                })
+                .then(detail => {
+                    console.log('个案详情:', detail);
+                    // 这里可以实现显示详情的逻辑
+                    alert(`查看个案 ${caseId} 的详情: \n${JSON.stringify(detail, null, 2)}`);
+                })
+                .catch(error => {
+                    console.error('获取个案详情失败:', error);
+                    alert('获取个案详情失败');
+                });
+        }
+
+        // 加载设备数据
+        function loadDevicesData() {
+            const devicesTableBody = document.getElementById('devicesTableBody');
+            if (devicesTableBody) {
+                devicesTableBody.innerHTML = '<tr><td colspan="9" class="px-6 py-4 text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>加载设备数据中...</td></tr>';
+            }
+
+            fetch(API_BASE_URL + '/api/devices')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('获取设备数据失败');
+                    }
+                    return response.json();
+                })
+                .then(devices => {
+                    if (devicesTableBody) {
+                        if (devices.length === 0) {
+                            devicesTableBody.innerHTML = '<tr><td colspan="9" class="px-6 py-4 text-center text-gray-500">暂无设备数据</td></tr>';
+                            return;
+                        }
+
+                        let html = '';
+                        devices.forEach(device => {
+                            const statusClass = device.status === '在线' ? 'online' : 'offline';
+
+                            html += `
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">${device.id}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${device.region}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${device.location}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="badge ${statusClass}">${device.status}</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${device.version}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${device.total}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${device.today}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${device.lastUpload}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <button class="update-btn mr-2" data-device-id="${device.id}">更新模型</button>
+                                        <button class="text-blue-600 hover:text-blue-800">详情</button>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+
+                        devicesTableBody.innerHTML = html;
+
+                        // 添加更新模型事件
+                        document.querySelectorAll('.update-btn').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const deviceId = this.getAttribute('data-device-id');
+                                showModelUpdatePage(deviceId);
+                            });
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('加载设备数据失败:', error);
+                    if (devicesTableBody) {
+                        devicesTableBody.innerHTML = '<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">数据加载失败</td></tr>';
+                    }
+                });
+        }
+
+        // 显示模型更新页面
+        function showModelUpdatePage(deviceId) {
+            // 隐藏设备列表，显示模型更新页面
+            document.getElementById('devices').classList.add('hidden');
+            document.getElementById('modelUpdate').classList.remove('hidden');
+
+            // 加载设备详情
+            fetch(API_BASE_URL + `/api/devices/${deviceId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('获取设备详情失败');
+                    }
+                    return response.json();
+                })
+                .then(device => {
+                    // 更新设备信息
+                    document.getElementById('deviceId').textContent = device.id;
+                    document.getElementById('deviceRegion').textContent = device.region;
+                    document.getElementById('currentVersion').textContent = device.version;
+
+                    // 加载可用版本
+                    const versionSelector = document.getElementById('versionSelector');
+                    if (versionSelector) {
+                        versionSelector.innerHTML = '';
+                        device.availableVersions.forEach(version => {
+                            const option = document.createElement('option');
+                            option.value = version;
+                            option.textContent = version;
+                            versionSelector.appendChild(option);
+                        });
+                        // 设置最新版本
+                        document.getElementById('latestVersion').textContent = device.availableVersions[0] || '未知';
+                    }
+                })
+                .catch(error => {
+                    console.error('获取设备详情失败:', error);
+                });
+
+            // 重置更新状态
+            const progressBar = document.getElementById('progressBar');
+            const progressContainer = document.getElementById('progressContainer');
+            const updateStatusEl = document.getElementById('updateStatus');
+            const successMessage = document.getElementById('successMessage');
+            const startUploadBtn = document.getElementById('startUploadBtn');
+
+            if (progressBar) progressBar.style.width = '0%';
+            if (progressContainer) progressContainer.style.display = 'none';
+            if (updateStatusEl) {
+                updateStatusEl.textContent = '请点击"开始更新"按钮启动模型更新';
+            }
+            if (successMessage) successMessage.style.display = 'none';
+            if (startUploadBtn) startUploadBtn.disabled = false;
+        }
+
+        // 加载统计数据
+        function loadStatsData() {
+            fetch(API_BASE_URL + '/api/stats/detailed')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('获取详细统计数据失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // 更新统计卡片
+                    document.getElementById('statsTotalTests').textContent = data.totalTests.toLocaleString();
+                    document.getElementById('statsPositiveCount').textContent = data.positiveCount.toLocaleString();
+                    document.getElementById('statsSuspectedCount').textContent = data.suspectedCount.toLocaleString();
+                    document.getElementById('statsAvgAge').textContent = data.averageAge.toFixed(1);
+
+                    // 更新图表数据
+                    const testTrendChart = Chart.getChart('testTrendChart');
+                    if (testTrendChart) {
+                        testTrendChart.data.datasets[0].data = data.monthlyTests;
+                        testTrendChart.update();
+                    }
+
+                    const genderChart = Chart.getChart('genderDistributionChart');
+                    if (genderChart) {
+                        genderChart.data.datasets[0].data = [data.maleCount, data.femaleCount];
+                        genderChart.update();
+                    }
+
+                    const positiveRateChart = Chart.getChart('positiveRateChart');
+                    if (positiveRateChart) {
+                        positiveRateChart.data.labels = data.regions;
+                        positiveRateChart.data.datasets[0].data = data.positiveRates;
+                        positiveRateChart.update();
+                    }
+                })
+                .catch(error => {
+                    console.error('加载统计数据失败:', error);
+                });
+        }
+
+        // 加载摘要统计数据
+        function loadSummaryStats() {
+            fetch(API_BASE_URL + '/api/stats/summary')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('获取统计摘要失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // 更新统计卡片数据
+                    document.getElementById('totalTests').textContent = data.totalTests.toLocaleString();
+                    document.getElementById('positiveCount').textContent = data.positiveCount.toLocaleString();
+                    document.getElementById('suspectedCount').textContent = data.suspectedCount.toLocaleString();
+                    document.getElementById('positiveRate').textContent = `${data.positiveRate}%`;
+                })
+                .catch(error => {
+                    console.error('加载统计摘要失败:', error);
+                });
+        }
+
+        // 登录相关函数
+        function checkLoginStatus() {
+            // 从本地存储获取token
+            const token = localStorage.getItem('auth_token');
+
+            if (token) {
+                // 有token，验证有效性
+                fetch(API_BASE_URL + '/api/user/info', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        // Token无效或过期
+                        throw new Error('Token无效');
+                    }
+                })
+                .then(user => {
+                    // 验证成功
+                    isLoggedIn = true;
+                    updateLoginUI(user);
+
+                    // 加载默认数据
+                    loadMapData();
+                    loadSummaryStats();
+                })
+                .catch(error => {
+                    console.error('登录状态验证失败:', error);
+                    // 清除无效token
+                    localStorage.removeItem('auth_token');
+                    isLoggedIn = false;
+                    showLoginModal();
+                });
+            } else {
+                // 无token，需要登录
+                isLoggedIn = false;
+                showLoginModal();
+            }
+        }
+
+        function login(username, password) {
+            return fetch(API_BASE_URL + '/api/user/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password }),
+                credentials: 'include'
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    return null;
+                }
+            })
+            .then(data => {
+                if (data && data.success && data.user) {
+                    // 存储认证信息
+                    localStorage.setItem('auth_token', data.token || '');
+                    isLoggedIn = true;
+                    return data.user;
+                }
+                return null;
+            });
+        }
+
+        function logout() {
+            // 调用后端登出API
+            fetch(API_BASE_URL + '/api/user/logout', {
+                method: 'POST',
+                credentials: 'include'
+            })
+            .catch(error => console.error('登出API调用失败:', error))
+            .finally(() => {
+                // 清除本地存储
+                localStorage.removeItem('auth_token');
+                isLoggedIn = false;
+
+                // 更新UI
+                document.getElementById('currentUser').textContent = '请登录';
+
+                // 显示登录模态框
+                showLoginModal();
+
+                // 隐藏所有内容区域
+                document.getElementById('mainContent').classList.add('content-hidden');
+            });
+        }
+
+        function updateLoginUI(user) {
+            const currentUserEl = document.getElementById('currentUser');
+            if (currentUserEl) {
+                currentUserEl.textContent = user.name || user.username;
+            }
+
+            // 隐藏登录模态框
+            const loginModal = document.getElementById('loginModal');
+            if (loginModal) {
+                loginModal.classList.add('hidden');
+            }
+
+            // 显示主内容
+            document.getElementById('mainContent').classList.remove('content-hidden');
+
+            // 显示默认区域
+            const mapSection = document.getElementById('map');
+            if (mapSection) {
+                mapSection.classList.remove('hidden');
+            }
+
+            // 更新导航状态
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(l => l.classList.remove('active'));
+            const mapLink = document.querySelector('a[href="#map"]');
+            if (mapLink) {
+                mapLink.classList.add('active');
+            }
+        }
+
+        function showLoginModal() {
+            const loginModal = document.getElementById('loginModal');
+            if (loginModal) {
+                loginModal.classList.remove('hidden');
+            }
+            // 确保主内容隐藏
+            document.getElementById('mainContent').classList.add('content-hidden');
+        }
+    </script>
+</body>
+</html>
