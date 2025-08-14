@@ -573,23 +573,6 @@
                             <i class="fas fa-map-marked-alt text-blue-600 mr-2"></i>
                             地图可视化
                         </h2>
-                        <div class="flex space-x-2">
-                            <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option>拉萨市</option>
-                                <option>日喀则市</option>
-                                <option>昌都市</option>
-                                <option>林芝市</option>
-                                <option>山南市</option>
-                                <option>那曲市</option>
-                                <option>阿里地区</option>
-                            </select>
-                            <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option>近7天</option>
-                                <option>近30天</option>
-                                <option>近90天</option>
-                                <option>全年</option>
-                            </select>
-                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -656,23 +639,6 @@
                             <i class="fas fa-tablet-alt text-blue-600 mr-2"></i>
                             设备管理
                         </h2>
-                        <div class="flex space-x-2">
-                            <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option selected>全部地区</option>
-                                <option>拉萨市</option>
-                                <option>日喀则市</option>
-                                <option>昌都市</option>
-                                <option>林芝市</option>
-                                <option>山南市</option>
-                                <option>那曲市</option>
-                                <option>阿里地区</option>
-                            </select>
-                            <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option selected>全部状态</option>
-                                <option>在线</option>
-                                <option>离线</option>
-                            </select>
-                        </div>
                     </div>
 
                     <div class="glass-card overflow-x-auto">
@@ -792,25 +758,6 @@
                             <i class="fas fa-child text-blue-600 mr-2"></i>
                             个案管理
                         </h2>
-                        <div class="flex space-x-2">
-                            <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option selected>全部地区</option>
-                                <option>拉萨市</option>
-                                <option>日喀则市</option>
-                                <option>昌都市</option>
-                                <option>林芝市</option>
-                                <option>山南市</option>
-                                <option>那曲市</option>
-                                <option>阿里地区</option>
-                            </select>
-                            <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option selected>全部结论</option>
-                                <option>阳性</option>
-                                <option>疑似</option>
-                                <option>阴性</option>
-                            </select>
-                            <input type="date" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
                     </div>
 
                     <div class="glass-card overflow-x-auto">
@@ -1143,11 +1090,18 @@
 
             // 初始化地图 - 使用setTimeout避免阻塞主线程
             setTimeout(() => {
+                // 替换原setTimeout代码
                 if (isLoggedIn && typeof AMapLoader !== 'undefined') {
                     initMap();
+                } else if (isLoggedIn) {
+                // 若AMapLoader未加载，等待加载完成后再初始化
+                window.addEventListener('load', () => {
+                 if (typeof AMapLoader !== 'undefined') {
+                     initMap();
+                 }
+                 });
                 }
-            }, 1000);
-
+            },1000);
             // 初始化图表 - 使用requestIdleCallback在浏览器空闲时初始化
             if (typeof requestIdleCallback !== 'undefined') {
                 requestIdleCallback(() => {
@@ -1173,27 +1127,32 @@
             if (sendBtn && userInput && chatHistory) {
                 // 发送消息
                 const sendMessage = () => {
-                    const message = userInput.value.trim();
-                    if (message) {
-                        // 添加用户消息到聊天历史
-                        addMessageToHistory(message, 'user');
+                const message = userInput.value.trim();
+                if (message) {
+                     addMessageToHistory(message, 'user');
+                     userInput.value = '';
 
-                        // 清空输入框
-                        userInput.value = '';
-
-                        // 模拟系统回复（实际应调用API）
-                        setTimeout(() => {
-                            const responses = [
-                                "您的问题已收到，正在分析相关数据...",
-                                "根据系统统计，该指标在近期呈现上升趋势。",
-                                "不同地区的数据存在显著差异，主要受检测覆盖率影响。",
-                                "建议结合年龄分布进一步分析该数据。"
-                            ];
-                            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-                            addMessageToHistory(randomResponse, 'system');
-                        }, 1000);
-                    }
-                };
+        // 调用后端RAG接口
+                fetch(API_BASE_URL + '/api/rag/query', {
+                    method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message: message })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('获取答案失败');
+            return response.json();
+        })
+        .then(data => {
+            addMessageToHistory(data.answer, 'system');
+        })
+        .catch(error => {
+            console.error('RAG调用失败:', error);
+            addMessageToHistory('抱歉，暂时无法回答，请稍后再试', 'system');
+        });
+    }
+};
 
                 sendBtn.addEventListener('click', sendMessage);
                 userInput.addEventListener('keypress', function(e) {
@@ -1207,13 +1166,14 @@
             // 快捷问题按钮
             if (quickQuestionBtns) {
                 quickQuestionBtns.forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const question = this.getAttribute('data-question');
-                        if (userInput) {
-                            userInput.value = question;
-                        }
-                    });
-                });
+    btn.addEventListener('click', function() {
+        const question = this.getAttribute('data-question');
+        if (userInput) {
+            userInput.value = question;
+            sendMessage();  // 直接发送，而非仅填充输入框
+        }
+    });
+});
             }
 
             // 模型更新页面返回按钮
@@ -1310,6 +1270,7 @@
 
         // 初始化地图
         function initMap() {
+            console.log('initMap 函数被调用了');
             AMapLoader.load({
                 key: "7e7e2985246ddc770cc38d30c68e2e7a", // 这里填写你的高德地图API密钥
                 version: "2.0",
@@ -1317,7 +1278,7 @@
             }).then(AMap => {
                 const map = new AMap.Map("mapContainer", {
                     zoom: 7,
-    // 成都和贵阳之间的中心坐标（大约在四川东南部）
+
                     center: [105.5, 28.5],  // 调整为这个坐标
                     resizeEnable: true
                 });
@@ -1779,6 +1740,9 @@ function loadMapData(map) {
                     // 加载默认数据
                     loadMapData();
                     loadSummaryStats();
+                    if (typeof AMapLoader !== 'undefined') {
+                         initMap();
+                    }
                 })
                 .catch(error => {
                     console.error('登录状态验证失败:', error);
