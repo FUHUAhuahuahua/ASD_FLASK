@@ -3,6 +3,8 @@ from sqlalchemy import func
 from datetime import datetime
 
 
+
+
 class StatsService:
     @staticmethod
     def get_summary_stats():
@@ -24,15 +26,18 @@ class StatsService:
     @staticmethod
     def get_monthly_trend():
         """获取月度检测趋势"""
-        # 按月份分组统计
+        # 按年-月分组统计（确保SELECT和GROUP BY使用相同格式）
         result = db.session.query(
-            func.date_format(CaseInfo.test_date, '%m月').label('month'),
+            func.date_format(CaseInfo.test_date, '%Y-%m').label('year_month'),  # 统一格式
             func.count(CaseInfo.id).label('count')
         ).group_by(func.date_format(CaseInfo.test_date, '%Y-%m')).order_by(
             func.date_format(CaseInfo.test_date, '%Y-%m')).all()
 
-        return [{'month': item.month, 'count': item.count} for item in result]
-
+    # 转换为前端需要的"XX月"格式
+        return [
+            {'month': item.year_month.split('-')[1] + '月', 'count': item.count} 
+            for item in result
+        ]
     @staticmethod
     def get_region_distribution():
         """获取各地区检测数量分布"""

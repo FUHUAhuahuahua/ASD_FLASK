@@ -1317,7 +1317,8 @@
             }).then(AMap => {
                 const map = new AMap.Map("mapContainer", {
                     zoom: 7,
-                    center: [91.1322, 29.6603], // 西藏自治区中心坐标
+    // 成都和贵阳之间的中心坐标（大约在四川东南部）
+                    center: [105.5, 28.5],  // 调整为这个坐标
                     resizeEnable: true
                 });
 
