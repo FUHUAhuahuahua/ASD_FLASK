@@ -1298,7 +1298,7 @@
 
         // 初始化图表
         function initCharts() {
-            // 检测数量趋势图
+            // 1. 检测数量趋势图
             const testTrendCtx = document.getElementById('testTrendChart');
             if (testTrendCtx) {
                 new Chart(testTrendCtx, {
@@ -1307,31 +1307,37 @@
                         labels: ['1月', '2月', '3月', '4月', '5月', '6月'],
                         datasets: [{
                             label: '检测数量',
-                            data: [], // 将通过API加载
+                            data: [],
                             borderColor: '#3b82f6',
                             backgroundColor: 'rgba(59, 130, 246, 0.1)',
                             tension: 0.3,
-                            fill: true
+                            fill: true,
+                            // 确保0值也能显示
+                            pointRadius: 4,
+                            pointBackgroundColor: '#3b82f6',
+                            pointHoverRadius: 6
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
-                            legend: {
-                                position: 'top',
-                            }
+                            legend: { position: 'top' },
+                            // 空数据提示（Chart.js 3.x需自定义，这里用插件模拟）
+                            tooltip: { enabled: true }
                         },
                         scales: {
                             y: {
-                                beginAtZero: true
+                                beginAtZero: true,
+                                min: 0,
+                                ticks: { precision: 0 } // 确保整数显示
                             }
                         }
                     }
                 });
             }
 
-            // 性别分布图
+            // 2. 性别分布图
             const genderCtx = document.getElementById('genderDistributionChart');
             if (genderCtx) {
                 new Chart(genderCtx, {
@@ -1339,53 +1345,50 @@
                     data: {
                         labels: ['男', '女'],
                         datasets: [{
-                            data: [], // 将通过API加载
+                            data: [],
                             backgroundColor: ['#3b82f6', '#ec4899'],
-                            borderWidth: 0
+                            borderWidth: 0,
+                            // 确保数据为0时也有基础显示
+                            hoverOffset: 10
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                            }
-                        },
-                        cutout: '70%'
+                        plugins: { legend: { position: 'top' } },
+                        cutout: '70%',
+                        // 解决空数据时图表不显示的问题
+                        animation: { duration: 500 }
                     }
                 });
             }
 
-            // 阳性率地区对比图
+            // 3. 阳性率地区对比图
             const positiveRateCtx = document.getElementById('positiveRateChart');
             if (positiveRateCtx) {
                 new Chart(positiveRateCtx, {
                     type: 'bar',
                     data: {
-                        labels: [], // 将通过API加载
+                        labels: [],
                         datasets: [{
                             label: '阳性率 (%)',
-                            data: [], // 将通过API加载
-                            backgroundColor: '#ef4444'
+                            data: [],
+                            backgroundColor: '#ef4444',
+                            barThickness: 30,
+                            // 确保0值也有高度
+                            minBarLength: 2
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            }
-                        },
+                        plugins: { legend: { display: false } },
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                ticks: {
-                                    callback: function(value) {
-                                        return value + '%';
-                                    }
-                                }
+                                min: 0,
+                                max: 100,
+                                ticks: { callback: (v) => v + '%' }
                             }
                         }
                     }
@@ -1394,49 +1397,48 @@
         }
 
         // 加载地图数据
-       // 加载地图数据
-function loadMapData(map) {
-    fetch(API_BASE_URL + '/api/map/data')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('获取地图数据失败');
-            }
-            return response.json();
-        })
-        .then(data => {  // data 是后端返回的列表，直接遍历
-            console.log('地图数据:', data);
+        function loadMapData(map) {
+            fetch(API_BASE_URL + '/api/map/data')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('获取地图数据失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {  // data 是后端返回的列表，直接遍历
+                    console.log('地图数据:', data);
 
-            if (window.AMap && map) {
-                map.remove(map.getAllOverlays('marker')); // 清除现有标记
+                    if (window.AMap && map) {
+                        map.remove(map.getAllOverlays('marker')); // 清除现有标记
 
-                // 修复1：直接遍历 data（而非 data.regions）
-                data.forEach(region => {
-                    const marker = new window.AMap.Marker({
-                        // 修复2：使用正确的经纬度字段 lnglat（后端返回的是数组）
-                        position: region.lnglat,
-                        title: region.name,
-                        label: {
-                            // 修复3：使用正确的阳性率字段 positiveRate
-                            content: `${region.positiveRate}%`,
-                            offset: new window.AMap.Pixel(20, 20)
-                        },
-                        icon: new window.AMap.Icon({
-                            size: new window.AMap.Size(32, 32),
-                            image: 'https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png'
-                        })
-                    });
-                    map.add(marker);
+                        // 修复1：直接遍历 data（而非 data.regions）
+                        data.forEach(region => {
+                            const marker = new window.AMap.Marker({
+                                // 修复2：使用正确的经纬度字段 lnglat（后端返回的是数组）
+                                position: region.lnglat,
+                                title: region.name,
+                                label: {
+                                    // 修复3：使用正确的阳性率字段 positiveRate
+                                    content: `${region.positiveRate}%`,
+                                    offset: new window.AMap.Pixel(20, 20)
+                                },
+                                icon: new window.AMap.Icon({
+                                    size: new window.AMap.Size(32, 32),
+                                    image: 'https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png'
+                                })
+                            });
+                            map.add(marker);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('加载地图数据失败:', error);
+                    const mapContainer = document.getElementById('mapContainer');
+                    if (mapContainer) {
+                        mapContainer.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-red-50"><p class="text-red-600">地图数据加载失败</p></div>';
+                    }
                 });
-            }
-        })
-        .catch(error => {
-            console.error('加载地图数据失败:', error);
-            const mapContainer = document.getElementById('mapContainer');
-            if (mapContainer) {
-                mapContainer.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-red-50"><p class="text-red-600">地图数据加载失败</p></div>';
-            }
-        });
-}
+        }
 
         // 加载个案数据
         function loadCasesData() {
@@ -1614,19 +1616,18 @@ function loadMapData(map) {
                     document.getElementById('currentVersion').textContent = device.version;
 
                     // 加载可用版本
-                    // 加载可用版本
-                const versionSelector = document.getElementById('versionSelector');
-                if (versionSelector) {
-                     versionSelector.innerHTML = '';
-                      device.availableVersions.forEach(version => {
-                      const option = document.createElement('option');
-                     option.value = version;
-                     option.textContent = version;
-                     versionSelector.appendChild(option);
-                  });
-    // 设置最新版本
-    document.getElementById('latestVersion').textContent = device.availableVersions[0] || '未知';
-}
+                    const versionSelector = document.getElementById('versionSelector');
+                    if (versionSelector) {
+                         versionSelector.innerHTML = '';
+                          device.availableVersions.forEach(version => {
+                          const option = document.createElement('option');
+                         option.value = version;
+                         option.textContent = version;
+                         versionSelector.appendChild(option);
+                      });
+                      // 设置最新版本
+                      document.getElementById('latestVersion').textContent = device.availableVersions[0] || '未知';
+                    }
                 })
                 .catch(error => {
                     console.error('获取设备详情失败:', error);
@@ -1652,43 +1653,53 @@ function loadMapData(map) {
         function loadStatsData() {
             fetch(API_BASE_URL + '/api/stats/detailed')
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error('获取详细统计数据失败');
-                    }
+                    if (!response.ok) throw new Error('获取详细统计数据失败');
                     return response.json();
                 })
                 .then(data => {
-                    console.log('图表数据:', data);
-                    // 更新统计卡片
-                    document.getElementById('statsTotalTests').textContent = data.totalTests.toLocaleString();
-                    document.getElementById('statsPositiveCount').textContent = data.positiveCount.toLocaleString();
-                    document.getElementById('statsSuspectedCount').textContent = data.suspectedCount.toLocaleString();
-                    // 将原来的行替换为
-                    const avgAge = Number(data.averageAge) || 0;
-                    document.getElementById('statsAvgAge').textContent = avgAge.toFixed(1);
+                    console.log('加载到的图表数据:', data);
 
-                    // 更新图表数据
+                    // 更新统计卡片（处理可能的null/undefined）
+                    document.getElementById('statsTotalTests').textContent = (data.totalTests || 0).toLocaleString();
+                    document.getElementById('statsPositiveCount').textContent = (data.positiveCount || 0).toLocaleString();
+                    document.getElementById('statsSuspectedCount').textContent = (data.suspectedCount || 0).toLocaleString();
+                    document.getElementById('statsAvgAge').textContent = (data.averageAge ? data.averageAge.toFixed(1) : '0.0');
+
+                    // 更新检测趋势图
                     const testTrendChart = Chart.getChart('testTrendChart');
                     if (testTrendChart) {
-                        testTrendChart.data.datasets[0].data = data.monthlyTests;
+                        // 处理空数据（避免undefined导致的错误）
+                        testTrendChart.data.datasets[0].data = data.monthlyTests || [];
                         testTrendChart.update();
+                    } else {
+                        console.error('testTrendChart未初始化，请检查canvas ID是否正确');
+                        // 重试初始化（容错处理）
+                        initCharts();
                     }
 
+                    // 更新性别分布图
                     const genderChart = Chart.getChart('genderDistributionChart');
                     if (genderChart) {
-                        genderChart.data.datasets[0].data = [data.maleCount, data.femaleCount];
+                        genderChart.data.datasets[0].data = [data.maleCount || 0, data.femaleCount || 0];
                         genderChart.update();
+                    } else {
+                        console.error('genderDistributionChart未初始化');
                     }
 
+                    // 更新阳性率地区对比图
                     const positiveRateChart = Chart.getChart('positiveRateChart');
                     if (positiveRateChart) {
-                        positiveRateChart.data.labels = data.regions;
-                        positiveRateChart.data.datasets[0].data = data.positiveRates;
+                        positiveRateChart.data.labels = data.regions || [];
+                        positiveRateChart.data.datasets[0].data = data.positiveRates || [];
                         positiveRateChart.update();
+                    } else {
+                        console.error('positiveRateChart未初始化');
                     }
                 })
                 .catch(error => {
                     console.error('加载统计数据失败:', error);
+                    // 显示错误提示（可选）
+                    alert('图表数据加载失败，请刷新页面重试');
                 });
         }
 
@@ -1697,6 +1708,7 @@ function loadMapData(map) {
             fetch(API_BASE_URL + '/api/stats/summary')
                 .then(response => {
                     if (!response.ok) {
+
                         throw new Error('获取统计摘要失败');
                     }
                     return response.json();
@@ -1790,33 +1802,33 @@ function loadMapData(map) {
         }
 
         function logout() {
-    // 调用后端登出API
-    fetch(API_BASE_URL + '/api/user/logout', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-    })
-    .then(response => response.json())
-    .then(data => {
-        // 清除本地存储
-        localStorage.removeItem('auth_token');
-        isLoggedIn = false;
-        
-        // 更新UI
-        document.getElementById('mainContent').classList.add('content-hidden');
-        showLoginModal();
-    })
-    .catch(error => {
-        console.error('登出失败:', error);
-        // 即使API调用失败，也强制清除登录状态
-        localStorage.removeItem('auth_token');
-        isLoggedIn = false;
-        document.getElementById('mainContent').classList.add('content-hidden');
-        showLoginModal();
-    });
-}
+            // 调用后端登出API
+            fetch(API_BASE_URL + '/api/user/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include'
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 清除本地存储
+                localStorage.removeItem('auth_token');
+                isLoggedIn = false;
+                
+                // 更新UI
+                document.getElementById('mainContent').classList.add('content-hidden');
+                showLoginModal();
+            })
+            .catch(error => {
+                console.error('登出失败:', error);
+                // 即使API调用失败，也强制清除登录状态
+                localStorage.removeItem('auth_token');
+                isLoggedIn = false;
+                document.getElementById('mainContent').classList.add('content-hidden');
+                showLoginModal();
+            });
+        }
 
         function updateLoginUI(user) {
             const currentUserEl = document.getElementById('currentUser');
