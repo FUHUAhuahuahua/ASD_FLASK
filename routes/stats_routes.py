@@ -38,7 +38,8 @@ def get_detailed_stats():
     try:
         # 1. 计算平均年龄（使用正确的字段名 age_months）
         avg_age_result = db.session.query(func.avg(CaseInfo.age_months)).first()
-        avg_age = round(avg_age_result[0], 1) if avg_age_result[0] is not None else 0
+        # 修改平均年龄计算部分
+        avg_age = round(float(avg_age_result[0]), 1) if avg_age_result[0] is not None else 0.0
 
         # 2. 统计性别分布
         male_count = CaseInfo.query.filter_by(gender='男').count()

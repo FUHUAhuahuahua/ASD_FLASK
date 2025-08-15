@@ -9,6 +9,7 @@ from routes.map_routes import map_bp
 from routes.user_routes import user_bp
 from routes.device_routes import device_bp
 from routes.rag_routes import rag_bp
+from routes.model_routes import model_bp
 
 login_manager = LoginManager()
 login_manager.login_view = 'user.login'  # 登录视图
@@ -57,6 +58,7 @@ def create_app(config_class=Config):
     app.register_blueprint(map_bp)
     app.register_blueprint(device_bp)
     app.register_blueprint(rag_bp)
+    app.register_blueprint(model_bp)
     app.register_blueprint(user_bp)  # 注册用户路由
 
     # 添加根路由

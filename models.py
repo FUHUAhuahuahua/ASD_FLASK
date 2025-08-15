@@ -46,6 +46,12 @@ class Device(db.Model):
     last_upload = db.Column(db.DateTime)  # 最后上传时间
     available_versions = db.Column(db.JSON)  # 可用版本列表
 
+class Model(db.Model):
+    __tablename__ = 'model'
+    
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)  # 版本名称
+
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'

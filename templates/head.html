@@ -1614,18 +1614,19 @@ function loadMapData(map) {
                     document.getElementById('currentVersion').textContent = device.version;
 
                     // 加载可用版本
-                    const versionSelector = document.getElementById('versionSelector');
-                    if (versionSelector) {
-                        versionSelector.innerHTML = '';
-                        device.availableVersions.forEach(version => {
-                            const option = document.createElement('option');
-                            option.value = version;
-                            option.textContent = version;
-                            versionSelector.appendChild(option);
-                        });
-                        // 设置最新版本
-                        document.getElementById('latestVersion').textContent = device.availableVersions[0] || '未知';
-                    }
+                    // 加载可用版本
+                const versionSelector = document.getElementById('versionSelector');
+                if (versionSelector) {
+                     versionSelector.innerHTML = '';
+                      device.availableVersions.forEach(version => {
+                      const option = document.createElement('option');
+                     option.value = version;
+                     option.textContent = version;
+                     versionSelector.appendChild(option);
+                  });
+    // 设置最新版本
+    document.getElementById('latestVersion').textContent = device.availableVersions[0] || '未知';
+}
                 })
                 .catch(error => {
                     console.error('获取设备详情失败:', error);
@@ -1661,7 +1662,9 @@ function loadMapData(map) {
                     document.getElementById('statsTotalTests').textContent = data.totalTests.toLocaleString();
                     document.getElementById('statsPositiveCount').textContent = data.positiveCount.toLocaleString();
                     document.getElementById('statsSuspectedCount').textContent = data.suspectedCount.toLocaleString();
-                    document.getElementById('statsAvgAge').textContent = data.averageAge.toFixed(1);
+                    // 将原来的行替换为
+                    const avgAge = Number(data.averageAge) || 0;
+                    document.getElementById('statsAvgAge').textContent = avgAge.toFixed(1);
 
                     // 更新图表数据
                     const testTrendChart = Chart.getChart('testTrendChart');
