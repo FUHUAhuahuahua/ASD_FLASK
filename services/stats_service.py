@@ -51,19 +51,30 @@ class StatsService:
         }
     @staticmethod
     def get_monthly_trend():
-        """获取月度检测趋势"""
-        # 按年-月分组统计（确保SELECT和GROUP BY使用相同格式）
-        result = db.session.query(
-            func.date_format(CaseInfo.test_date, '%Y-%m').label('year_month'),  # 统一格式
-            func.count(CaseInfo.id).label('count')
-        ).group_by(func.date_format(CaseInfo.test_date, '%Y-%m')).order_by(
-            func.date_format(CaseInfo.test_date, '%Y-%m')).all()
+        """获取最近6个月的检测趋势（确保返回6个数据点）"""
+        # 获取当前日期前6个月的年月
+        current_date = datetime.now()
+        target_months = []
+        for i in range(6):
+            month = current_date.month - i if current_date.month - i > 0 else current_date.month - i + 12
+            year = current_date.year if current_date.month - i > 0 else current_date.year - 1
+            target_months.append(f"{year}-{month:02d}")  # 格式：YYYY-MM
+        target_months.reverse()  # 按时间正序排列
 
-    # 转换为前端需要的"XX月"格式
-        return [
-            {'month': item.year_month.split('-')[1] + '月', 'count': item.count} 
-            for item in result
-        ]
+    # 数据库查询结果
+        db_result = dict(db.session.query(
+            func.date_format(CaseInfo.test_date, '%Y-%m').label('year_month'),
+            func.count(CaseInfo.id).label('count')
+        ).group_by(func.date_format(CaseInfo.test_date, '%Y-%m')).all())
+
+    # 确保返回6个数据点（无数据的月份补0）
+        monthly_data = []
+        for ym in target_months:
+            monthly_data.append({
+                'month': ym.split('-')[1] + '月',  # 格式：XX月
+                'count': db_result.get(ym, 0)
+            })
+        return monthly_data
     @staticmethod
     def get_region_distribution():
         """获取各地区检测数量分布"""

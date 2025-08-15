@@ -50,9 +50,9 @@ def get_detailed_stats():
         monthly_tests = [item['count'] for item in monthly_trend]
 
         # 4. 获取地区列表和对应的阳性率（用于图表）
-        region_dist = StatsService.get_region_distribution()
-        regions = list(region_dist.keys())
-        positive_rates = list(StatsService.get_positive_rate_by_region().values())
+        region_positive_rates = StatsService.get_positive_rate_by_region()
+        regions = list(region_positive_rates.keys())  # 以阳性率的地区顺序为准
+        positive_rates = list(region_positive_rates.values())
 
         # 5. 复用摘要统计数据
         summary = StatsService.get_summary_stats()

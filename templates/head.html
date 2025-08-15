@@ -1658,6 +1658,7 @@ function loadMapData(map) {
                     return response.json();
                 })
                 .then(data => {
+                    console.log('图表数据:', data);
                     // 更新统计卡片
                     document.getElementById('statsTotalTests').textContent = data.totalTests.toLocaleString();
                     document.getElementById('statsPositiveCount').textContent = data.positiveCount.toLocaleString();
@@ -1789,27 +1790,33 @@ function loadMapData(map) {
         }
 
         function logout() {
-            // 调用后端登出API
-            fetch(API_BASE_URL + '/api/user/logout', {
-                method: 'POST',
-                credentials: 'include'
-            })
-            .catch(error => console.error('登出API调用失败:', error))
-            .finally(() => {
-                // 清除本地存储
-                localStorage.removeItem('auth_token');
-                isLoggedIn = false;
-
-                // 更新UI
-                document.getElementById('currentUser').textContent = '请登录';
-
-                // 显示登录模态框
-                showLoginModal();
-
-                // 隐藏所有内容区域
-                document.getElementById('mainContent').classList.add('content-hidden');
-            });
-        }
+    // 调用后端登出API
+    fetch(API_BASE_URL + '/api/user/logout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        // 清除本地存储
+        localStorage.removeItem('auth_token');
+        isLoggedIn = false;
+        
+        // 更新UI
+        document.getElementById('mainContent').classList.add('content-hidden');
+        showLoginModal();
+    })
+    .catch(error => {
+        console.error('登出失败:', error);
+        // 即使API调用失败，也强制清除登录状态
+        localStorage.removeItem('auth_token');
+        isLoggedIn = false;
+        document.getElementById('mainContent').classList.add('content-hidden');
+        showLoginModal();
+    });
+}
 
         function updateLoginUI(user) {
             const currentUserEl = document.getElementById('currentUser');
