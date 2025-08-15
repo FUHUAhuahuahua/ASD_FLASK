@@ -1,26 +1,52 @@
 from models import db, CaseInfo, Region
 from sqlalchemy import func
 from datetime import datetime
-
+import re 
 
 
 
 class StatsService:
     @staticmethod
     def get_summary_stats():
-        """获取统计摘要信息"""
-        total_tests = CaseInfo.query.count()
-        positive_count = CaseInfo.query.filter_by(result='阳性').count()
-        suspected_count = CaseInfo.query.filter_by(result='疑似').count()  # 新增行
-        positive_rate = round((positive_count / total_tests) * 100, 2) if total_tests > 0 else 0
-
-        # 模拟数据上传成功率（实际项目中应根据真实数据计算）
-        upload_success_rate = 98.5
+        """获取统计摘要信息（修改版）"""
+        # 1. 查询所有个案的result字段
+        all_results = CaseInfo.query.with_entities(CaseInfo.result).all()
+        
+        # 2. 初始化计数器
+        total_tests = len(all_results)
+        positive_count = 0  # >80%
+        suspected_count = 0  # 40%-80%
+        negative_count = 0   # <40%
+        
+        # 3. 正则表达式：提取result中的数字（支持整数和小数）
+        pattern = re.compile(r'(\d+\.?\d*)%')
+        
+        # 4. 遍历结果并分类计数
+        for result in all_results:
+            result_str = result[0]  # result是元组，取第一个元素
+            match = pattern.search(result_str)
+            if match:
+                try:
+                    percentage = float(match.group(1))  # 提取数字并转为浮点数
+                    if percentage > 80:
+                        positive_count += 1
+                    elif 40 <= percentage <= 80:
+                        suspected_count += 1
+                    else:
+                        negative_count += 1
+                except ValueError:
+                    # 处理数字转换失败的异常（如格式错误）
+                    continue
+        
+        # 5. 计算阳性率（仅基于有效分类的数据）
+        valid_count = positive_count + suspected_count + negative_count
+        positive_rate = round((positive_count / valid_count) * 100, 2) if valid_count > 0 else 0
 
         return {
             'totalTests': total_tests,
-            'positiveCount': positive_count,
-            'suspectedCount': suspected_count,  # 确保这个字段存在
+            'positiveCount': positive_count,  # 阳性（>80%）
+            'suspectedCount': suspected_count,  # 疑似（40%-80%）
+            'negativeCount': negative_count,    # 新增：阴性（<40%）
             'positiveRate': positive_rate
         }
     @staticmethod
